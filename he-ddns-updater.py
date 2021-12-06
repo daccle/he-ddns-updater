@@ -67,8 +67,7 @@ except KeyError:
     logging.warning("Config file in wrong format")
     sys.exit(1)
 except FileNotFoundError:
-    logging.warning("No config file. Place config.yaml in current working\
-            directory.")
+    logging.warning("No config file. Place config.yaml in current working directory.")
     sys.exit(1)
 
 for i in data:
@@ -82,8 +81,7 @@ for i in data:
     dns.resolver.restore_system_resolver()
     logging.debug(f"CURRENT_IP_ON_NS: {CURRENT_IP_ON_NS}")
     if not CURRENT_IP_ON_NS == MYIP:
-        URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}\
-                &password={KEY}&myip={MYIP}'
+        URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEY}&myip={MYIP}'
         r = requests.get(URL)
         logging.debug(f"IP update performed. Server answer{r.status_code}")
     else:
