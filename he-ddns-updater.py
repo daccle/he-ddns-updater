@@ -19,7 +19,7 @@ dnspython    >=   2.1.0
 
 MIT License
 
-Copyright (c) 2021 Daniel Clerc <mail@clerc.eu>
+Copyright (c) 2023 Daniel Clerc <mail@clerc.eu>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -48,13 +48,16 @@ import sys
 
 logging.basicConfig(stream=sys.stderr, level=logging.WARN)
 
+# enforce IPv4 to get IPv4 ip address from ifconfig.co
+requests.packages.urllib3.util.connection.HAS_IPV6 = False
+
 # get my current ip
 r = requests.get(r'https://ifconfig.co/json')
 MYIP = r.json()['ip']
 logging.debug(f"MYIP: {MYIP}")
 
 try:
-    with open("config.yaml", "r") as configfile:
+    with open("/home/pi/he-ddns-updater/config.yaml", "r") as configfile:
         data = yaml.load(configfile, Loader=yaml.FullLoader)
         logging.debug("Opening config successful")
 
