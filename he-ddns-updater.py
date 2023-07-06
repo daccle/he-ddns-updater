@@ -54,7 +54,7 @@ logging.basicConfig(stream=sys.stderr, level=logging.WARN)
 requests.packages.urllib3.util.connection.HAS_IPV6 = False
 
 
-def main():
+def main(CONFIG):
    # get my current ip
    r = requests.get(r'https://ifconfig.co/json')
    MYIP = r.json()['ip']
@@ -95,4 +95,4 @@ def main():
            logging.debug("MYIP equals CURRENT_IP_ON_NS, no update needed.")
 
 if __name__ == "__main__":
-    main()
+    main(CONFIG)
