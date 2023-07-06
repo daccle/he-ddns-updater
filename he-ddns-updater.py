@@ -46,6 +46,8 @@ import yaml
 import logging
 import sys
 
+CONFIG = "/home/pi/he-ddns-updater/config.yaml"
+
 logging.basicConfig(stream=sys.stderr, level=logging.WARN)
 
 # enforce IPv4 to get IPv4 ip address from ifconfig.co
@@ -57,7 +59,7 @@ MYIP = r.json()['ip']
 logging.debug(f"MYIP: {MYIP}")
 
 try:
-    with open("/home/pi/he-ddns-updater/config.yaml", "r") as configfile:
+    with open(CONFIG, "r") as configfile:
         data = yaml.load(configfile, Loader=yaml.FullLoader)
         logging.debug("Opening config successful")
 
