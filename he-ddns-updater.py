@@ -53,41 +53,46 @@ logging.basicConfig(stream=sys.stderr, level=logging.WARN)
 # enforce IPv4 to get IPv4 ip address from ifconfig.co
 requests.packages.urllib3.util.connection.HAS_IPV6 = False
 
-# get my current ip
-r = requests.get(r'https://ifconfig.co/json')
-MYIP = r.json()['ip']
-logging.debug(f"MYIP: {MYIP}")
 
-try:
-    with open(CONFIG, "r") as configfile:
-        data = yaml.load(configfile, Loader=yaml.FullLoader)
-        logging.debug("Opening config successful")
+def main():
+   # get my current ip
+   r = requests.get(r'https://ifconfig.co/json')
+   MYIP = r.json()['ip']
+   logging.debug(f"MYIP: {MYIP}")
+   
+   try:
+       with open(CONFIG, "r") as configfile:
+           data = yaml.load(configfile, Loader=yaml.FullLoader)
+           logging.debug("Opening config successful")
+   
+       DOMAIN = data[0]['domain']
+       KEY = data[0]['key']
+   
+       logging.debug(f'DOMAIN: {DOMAIN}')
+       logging.debug(f'KEY: {KEY}')
+   except KeyError:
+       logging.warning("Config file in wrong format")
+       sys.exit(1)
+   except FileNotFoundError:
+       logging.warning("No config file. Place config.yaml in current working directory.")
+       sys.exit(1)
+   
+   for i in data:
+       DOMAIN = i['domain']
+       KEY = i['key']
+   
+       # get the current IP for DOMAIN on nameserver
+       dns.resolver.override_system_resolver(resolver="ns1.he.net")
+       answer = dns.resolver.resolve(DOMAIN, 'A')
+       CURRENT_IP_ON_NS = answer[0].to_text()
+       dns.resolver.restore_system_resolver()
+       logging.debug(f"CURRENT_IP_ON_NS: {CURRENT_IP_ON_NS}")
+       if not CURRENT_IP_ON_NS == MYIP:
+           URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEY}&myip={MYIP}'
+           r = requests.get(URL)
+           logging.debug(f"IP update performed. Server answer{r.status_code}")
+       else:
+           logging.debug("MYIP equals CURRENT_IP_ON_NS, no update needed.")
 
-    DOMAIN = data[0]['domain']
-    KEY = data[0]['key']
-
-    logging.debug(f'DOMAIN: {DOMAIN}')
-    logging.debug(f'KEY: {KEY}')
-except KeyError:
-    logging.warning("Config file in wrong format")
-    sys.exit(1)
-except FileNotFoundError:
-    logging.warning("No config file. Place config.yaml in current working directory.")
-    sys.exit(1)
-
-for i in data:
-    DOMAIN = i['domain']
-    KEY = i['key']
-
-    # get the current IP for DOMAIN on nameserver
-    dns.resolver.override_system_resolver(resolver="ns1.he.net")
-    answer = dns.resolver.resolve(DOMAIN, 'A')
-    CURRENT_IP_ON_NS = answer[0].to_text()
-    dns.resolver.restore_system_resolver()
-    logging.debug(f"CURRENT_IP_ON_NS: {CURRENT_IP_ON_NS}")
-    if not CURRENT_IP_ON_NS == MYIP:
-        URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEY}&myip={MYIP}'
-        r = requests.get(URL)
-        logging.debug(f"IP update performed. Server answer{r.status_code}")
-    else:
-        logging.debug("MYIP equals CURRENT_IP_ON_NS, no update needed.")
+if __name__ == "__main__":
+    main()
