@@ -19,7 +19,7 @@ dnspython    >=   2.1.0
 
 MIT License
 
-Copyright (c) 2023 Daniel Clerc <mail@clerc.eu>
+Copyright (c) 2025 Daniel Clerc <mail@clerc.eu>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -67,9 +67,6 @@ def main(CONFIG):
    
        DOMAIN = data[0]['domain']
        KEY = data[0]['key']
-   
-       logging.debug(f'DOMAIN: {DOMAIN}')
-       logging.debug(f'KEY: {KEY}')
    except KeyError:
        logging.warning("Config file in wrong format")
        sys.exit(1)
@@ -80,6 +77,9 @@ def main(CONFIG):
    for i in data:
        DOMAIN = i['domain']
        KEY = i['key']
+       
+       logging.debug(f'DOMAIN: {DOMAIN}')
+       logging.debug(f'KEY: {KEY}')
    
        # get the current IP for DOMAIN on nameserver
        dns.resolver.override_system_resolver(resolver="ns1.he.net")
