@@ -9,7 +9,8 @@ Expects a config file named config.yaml in the same directory with the
 following content:
 
 - domain: some.domain
-  key: NOTSORANDOMKEY
+  key_v4: NOTSORANDOMKEY
+  key_v6: NOTSORANDOMKEY
 
 Dependencies:
 
@@ -50,15 +51,19 @@ CONFIG = "/home/pi/he-ddns-updater/config.yaml"
 
 logging.basicConfig(stream=sys.stderr, level=logging.WARN)
 
-# enforce IPv4 to get IPv4 ip address from ifconfig.co
-requests.packages.urllib3.util.connection.HAS_IPV6 = False
-
 
 def main(CONFIG):
-   # get my current ip
+   # get my current IPv6
    r = requests.get(r'https://ifconfig.co/json')
-   MYIP = r.json()['ip']
-   logging.debug(f"MYIP: {MYIP}")
+   MYIPv6 = r.json()['ip']
+   logging.debug(f"MYIPv6: {MYIPv6}")
+   
+   # get my current IPv4
+   # enforce IPv4 to get IPv4 ip address from ifconfig.co
+   requests.packages.urllib3.util.connection.HAS_IPV6 = False
+   r = requests.get(r'https://ifconfig.co/json')
+   MYIPv4 = r.json()['ip']
+   logging.debug(f"MYIPv4: {MYIPv4}")
    
    try:
        with open(CONFIG, "r") as configfile:
@@ -66,7 +71,8 @@ def main(CONFIG):
            logging.debug("Opening config successful")
    
        DOMAIN = data[0]['domain']
-       KEY = data[0]['key']
+       KEYv4 = data[0]['key_v4']
+       KEYv6 = data[0]['key_v6']
    except KeyError:
        logging.warning("Config file in wrong format")
        sys.exit(1)
@@ -76,23 +82,40 @@ def main(CONFIG):
    
    for i in data:
        DOMAIN = i['domain']
-       KEY = i['key']
+       KEYv4 = i['key_v4']
+       KEYv6 = i['key_v6']
        
        logging.debug(f'DOMAIN: {DOMAIN}')
-       logging.debug(f'KEY: {KEY}')
+       logging.debug(f'KEYv4: {KEYv4}')
+       logging.debug(f'KEYv6: {KEYv6}')
    
-       # get the current IP for DOMAIN on nameserver
+       # IPv4
+       # get the current IPv4 for DOMAIN on nameserver
        dns.resolver.override_system_resolver(resolver="ns1.he.net")
        answer = dns.resolver.resolve(DOMAIN, 'A')
-       CURRENT_IP_ON_NS = answer[0].to_text()
+       CURRENT_IPv4_ON_NS = answer[0].to_text()
        dns.resolver.restore_system_resolver()
-       logging.debug(f"CURRENT_IP_ON_NS: {CURRENT_IP_ON_NS}")
-       if not CURRENT_IP_ON_NS == MYIP:
-           URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEY}&myip={MYIP}'
+       logging.debug(f"CURRENT_IPv4_ON_NS: {CURRENT_IPv4_ON_NS}")
+       if not CURRENT_IPv4_ON_NS == MYIPv4:
+           URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEYv4}&myip={MYIPv4}'
            r = requests.get(URL)
-           logging.debug(f"IP update performed. Server answer{r.status_code}")
+           logging.debug(f"IPv4 update performed. Server answer{r.status_code}")
        else:
-           logging.debug("MYIP equals CURRENT_IP_ON_NS, no update needed.")
+           logging.debug("MYIPv4 equals CURRENT_IPv4_ON_NS, no update needed.")
+       
+       # IPv6
+       # get the current IPv6 for DOMAIN on nameserver
+       dns.resolver.override_system_resolver(resolver="ns1.he.net")
+       answer = dns.resolver.resolve(DOMAIN, 'AAAA')
+       CURRENT_IPv6_ON_NS = answer[0].to_text()
+       dns.resolver.restore_system_resolver()
+       logging.debug(f"CURRENT_IPv6_ON_NS: {CURRENT_IPv6_ON_NS}")
+       if not CURRENT_IPv6_ON_NS == MYIPv6:
+           URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEYv6}&myip={MYIPv6}'
+           r = requests.get(URL)
+           logging.debug(f"IPv6 update performed. Server answer{r.status_code}")
+       else:
+           logging.debug("MYIPv6 equals CURRENT_IPv6_ON_NS, no update needed.")
 
 if __name__ == "__main__":
     main(CONFIG)
