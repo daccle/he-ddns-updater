@@ -80,42 +80,54 @@ def main(CONFIG):
        logging.warning("No config file. Place config.yaml in current working directory.")
        sys.exit(1)
    
+   dns.resolver.override_system_resolver(resolver="ns1.he.net")
+   
    for i in data:
        DOMAIN = i['domain']
        KEYv4 = i['key_v4']
        KEYv6 = i['key_v6']
-       
+       CURRENT_ON_NS = dict() 
+
        logging.debug(f'DOMAIN: {DOMAIN}')
        logging.debug(f'KEYv4: {KEYv4}')
        logging.debug(f'KEYv6: {KEYv6}')
    
-       # IPv4
-       # get the current IPv4 for DOMAIN on nameserver
-       dns.resolver.override_system_resolver(resolver="ns1.he.net")
-       answer = dns.resolver.resolve(DOMAIN, 'A')
-       CURRENT_IPv4_ON_NS = answer[0].to_text()
-       dns.resolver.restore_system_resolver()
-       logging.debug(f"CURRENT_IPv4_ON_NS: {CURRENT_IPv4_ON_NS}")
-       if not CURRENT_IPv4_ON_NS == MYIPv4:
-           URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEYv4}&myip={MYIPv4}'
-           r = requests.get(URL)
-           logging.debug(f"IPv4 update performed. Server answer{r.status_code}")
-       else:
-           logging.debug("MYIPv4 equals CURRENT_IPv4_ON_NS, no update needed.")
+       try:
+            # IPv4
+            answer = dns.resolver.resolve(DOMAIN, 'A')
+            CURRENT_ON_NS['IPv4'] = answer[0].to_text()
+            logging.debug(f"CURRENT_IPv4_ON_NS: {CURRENT_ON_NS['IPv4']}")
        
-       # IPv6
-       # get the current IPv6 for DOMAIN on nameserver
-       dns.resolver.override_system_resolver(resolver="ns1.he.net")
-       answer = dns.resolver.resolve(DOMAIN, 'AAAA')
-       CURRENT_IPv6_ON_NS = answer[0].to_text()
-       dns.resolver.restore_system_resolver()
-       logging.debug(f"CURRENT_IPv6_ON_NS: {CURRENT_IPv6_ON_NS}")
-       if not CURRENT_IPv6_ON_NS == MYIPv6:
-           URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEYv6}&myip={MYIPv6}'
-           r = requests.get(URL)
-           logging.debug(f"IPv6 update performed. Server answer{r.status_code}")
-       else:
-           logging.debug("MYIPv6 equals CURRENT_IPv6_ON_NS, no update needed.")
+            # IPv6
+            answer = dns.resolver.resolve(DOMAIN, 'AAAA')
+            CURRENT_ON_NS['IPv6'] = answer[0].to_text()
+            logging.debug(f"CURRENT_IPv6_ON_NS: {CURRENT_ON_NS['IPv6']}")
+       except AttributeError:
+            logging.warning(f"Couldn't get current IP address for {DOMAIN} form resolver.")
+       except dns.resolver.NoAnswer:
+            logging.warning(f"DNS record not found: {DOMAIN}")
+
+
+       try:
+            if CURRENT_ON_NS['IPv4'] and not CURRENT_ON_NS['IPv4'] == MYIPv4:
+                URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEYv4}&myip={MYIPv4}'
+                r = requests.get(URL)
+                logging.debug(f"IPv4 update performed. Server answer{r.status_code}")
+            else:
+                logging.debug("MYIPv4 wasn't updated")
+       
+            if CURRENT_ON_NS['IPv6'] and not CURRENT_ON_NS['IPv6'] == MYIPv6:
+                URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEYv6}&myip={MYIPv6}'
+                r = requests.get(URL)
+                logging.debug(f"IPv6 update performed. Server answer{r.status_code}")
+            else:
+                logging.debug("MYIPv6 wasn't updated.")
+       except requests.exceptions.ConnectionError:
+            logging.warning(f"Couldn't update DNS for {DOMAIN}. Error at dDNS-Service.")
+       except KeyError:
+            logging.warning(f"Couldn't update DNS for {DOMAIN}. Error at DNS resolver.")
+
+   dns.resolver.restore_system_resolver()
 
 if __name__ == "__main__":
     main(CONFIG)
