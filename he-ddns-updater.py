@@ -81,7 +81,6 @@ def main(CONFIG):
             "No config file. Place config.yaml in current working directory.")
         sys.exit(1)
 
-    dns.resolver.override_system_resolver(resolver="ns1.he.net")
 
     for i in data:
         DOMAIN = i['domain']
@@ -92,6 +91,8 @@ def main(CONFIG):
         logging.debug(f'DOMAIN: {DOMAIN}')
         logging.debug(f'KEYv4: {KEYv4}')
         logging.debug(f'KEYv6: {KEYv6}')
+
+        dns.resolver.override_system_resolver(resolver="ns1.he.net")
 
         try:
             # IPv4
@@ -109,6 +110,8 @@ def main(CONFIG):
         except dns.resolver.NoAnswer:
             logging.warning(f"DNS record not found: {DOMAIN}")
 
+        dns.resolver.restore_system_resolver()
+        
         try:
             if CURRENT_ON_NS['IPv4'] and not CURRENT_ON_NS['IPv4'] == MYIPv4:
                 URL = f'https://dyn.dns.he.net/nic/update?hostname={DOMAIN}&password={KEYv4}&myip={MYIPv4}'
@@ -125,14 +128,15 @@ def main(CONFIG):
                     f"IPv6 update performed. Server answer{r.status_code}")
             else:
                 logging.debug("MYIPv6 wasn't updated.")
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.ConnectionError as e:
+            logging.debug(e)
             logging.warning(
                 f"Couldn't update DNS for {DOMAIN}. Error at dDNS-Service.")
-        except KeyError:
+        except KeyError as e:
+            logging.debug(e)
             logging.warning(
                 f"Couldn't update DNS for {DOMAIN}. Error at DNS resolver.")
 
-    dns.resolver.restore_system_resolver()
 
 
 if __name__ == "__main__":
